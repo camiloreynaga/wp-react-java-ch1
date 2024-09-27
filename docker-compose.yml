@@ -3,6 +3,7 @@ version: '3'
 services:
   db:
     image: mysql:5.7
+    command: --default-authentication-plugin=mysql_native_password
     volumes:
       - db_data:/var/lib/mysql
     restart: always
@@ -11,11 +12,17 @@ services:
       MYSQL_DATABASE: wordpress
       MYSQL_USER: wordpressuser
       MYSQL_PASSWORD: wordpresspassword
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p", "rootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   wordpress:
-    image: wordpress:latest
+    build: ./backend
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - '8080:80'
     restart: always
@@ -27,5 +34,12 @@ services:
     volumes:
       - ./backend/wp-content:/var/www/html/wp-content
 
+  reactapp:
+    build: ./frontend
+    ports:
+      - '3000:80'
+    restart: always
+    depends_on:
+      - wordpress
 volumes:
   db_data:
